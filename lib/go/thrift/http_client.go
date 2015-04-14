@@ -190,6 +190,12 @@ func (p *THttpClient) Flush() error {
 		// TODO(pomack) log bad response
 		return NewTTransportException(UNKNOWN_TRANSPORT_EXCEPTION, "HTTP Response code: "+strconv.Itoa(response.StatusCode))
 	}
+	// If we don't Close() any existing response Body, we may leak FDs.
+	if p.response != nil {
+		// We can't do anything useful with an error here, so we ignore the
+		// return value.
+		err = p.response.Body.Close()
+	}
 	p.response = response
 	return nil
 }
