@@ -174,9 +174,23 @@ func (p *THttpClient) WriteString(s string) (n int, err error) {
 	return p.requestBuffer.WriteString(s)
 }
 
+type bufferCloser struct {
+	*bytes.Buffer
+}
+
+// THttpClient reuses its buffer from one request to the next. If that
+// buffer is not reset, well, it'll just keep getting extended from
+// one request to the next. Make the bytes.Buffer into an io.Closer
+// and rely on the http transport to call Close() (and therefore
+// Reset()).
+func (b *bufferCloser) Close() error {
+	b.Reset()
+	return nil
+}
+
 func (p *THttpClient) Flush() error {
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", p.url.String(), p.requestBuffer)
+	req, err := http.NewRequest("POST", p.url.String(), &bufferCloser{p.requestBuffer})
 	if err != nil {
 		return NewTTransportExceptionFromError(err)
 	}
